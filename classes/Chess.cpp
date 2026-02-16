@@ -61,6 +61,54 @@ void Chess::FENtoBoard(const std::string& fen) {
     // 3: castling availability (KQkq or -)
     // 4: en passant target square (in algebraic notation, or -)
     // 5: halfmove clock (number of halfmoves since the last capture or pawn advance)
+
+    _grid->forEachSquare([](ChessSquare* square, int x, int y){
+        square->destroyBit();
+    });
+
+    int file = 0;
+    int rank = 7; // FEN starts with rank 8, which is index 7 in our grid, because we index from 0 and start with white's perspective
+
+    for (char c: fen){
+        // Checks for end of FEN string
+        if (c == ' ') {
+            break;
+        }
+
+        // Checks for end of rank, then proceeds to next rank, and resets file
+        if (c == '/'){
+            file = 0;
+            rank--;
+            continue;
+        }
+
+        // Checks for number, which indicates how many empty squares there are, and moves the file over by that amount
+        if (c >= '1' && c <= '8') {
+            file += c - '0';
+            continue;
+        }
+
+        // Finds what kind of piece it is, and what color it is, then creates the appropriate piece and places it on the board
+        bool isWhite = (isupper(c));
+        char playerNumber = isWhite ? 0 : 1;
+
+        ChessPiece piece;
+        switch(tolower(c)) {
+            case 'p' : piece = Pawn; break;
+            case 'n' : piece = Knight; break;
+            case 'b' : piece = Bishop; break;
+            case 'r' : piece = Rook; break;
+            case 'q' : piece = Queen; break;
+            case 'k' : piece = King; break;
+        }
+
+        // create the piece and place it on the board
+        ChessSquare* square = _grid->getSquare(file, rank);
+        Bit* bit = PieceForPlayer(playerNumber, piece);
+        square->setBit(bit);
+        bit->setPosition(square->getPosition());
+        file++;
+    }
 }
 
 bool Chess::actionForEmptyHolder(BitHolder &holder)
