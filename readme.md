@@ -1,1 +1,1 @@
-[BoardSetup](!ChessBoardSetup.png)
+![BoardSetup](ChessBoardSetup.png)
