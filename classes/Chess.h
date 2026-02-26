@@ -2,18 +2,30 @@
 
 #include "Game.h"
 #include "Grid.h"
+#include "Bitboard.h"
 
 constexpr int pieceSize = 80;
+constexpr int WHITE = +1;
+constexpr int BLACK = -1;
 
-enum ChessPiece
-{
-    NoPiece,
-    Pawn,
-    Knight,
-    Bishop,
-    Rook,
-    Queen,
-    King
+enum AllBitBoards {
+    WHITE_PAWNS,
+    WHITE_KNIGHTS,
+    WHITE_BISHOPS,
+    WHITE_ROOKS,
+    WHITE_QUEENS,
+    WHITE_KING,
+    BLACK_PAWNS,
+    BLACK_KNIGHTS,
+    BLACK_BISHOPS,
+    BLACK_ROOKS,
+    BLACK_QUEENS,
+    BLACK_KING,
+    WHITE_ALL_PIECES,
+    BLACK_ALL_PIECES,
+    OCCUPANCY,
+    EMPTY_SQUARES,
+    e_numBitboards
 };
 
 class Chess : public Game
@@ -44,6 +56,16 @@ private:
     Player* ownerAt(int x, int y) const;
     void FENtoBoard(const std::string& fen);
     char pieceNotation(int x, int y) const;
+    void bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst);
+    std::vector<BitMove> generateAllMoves();
+    void generateKnightMoves(std::vector<BitMove> &moves, std::string &state);
+    void generateKingMoves(std::vector<BitMove> &moves, std::string &state);
+    void generatePawnMoves(std::vector<BitMove> &moves, std::string &state, int row, int col, int colorAsInt);
+    void addMoveIfValid(std::string &state, std::vector<BitMove> &moves, int fromRow, int fromCol, int toRow, int toCol);
 
     Grid* _grid;
+    int _currentPlayer;
+    std::vector<BitMove> _moves;
+    Bitboard _bitboards[e_numBitboards];
+    int _bitboardLookup[128];
 };

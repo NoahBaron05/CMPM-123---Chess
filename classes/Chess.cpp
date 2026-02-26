@@ -5,6 +5,23 @@
 Chess::Chess()
 {
     _grid = new Grid(8, 8);
+
+    for (int i = 0; i < 128; i++) {
+        _bitboardLookup[i] = 0;
+    }
+
+    _bitboardLookup['P'] = WHITE_PAWNS;
+    _bitboardLookup['N'] = WHITE_KNIGHTS;
+    _bitboardLookup['B'] = WHITE_BISHOPS;
+    _bitboardLookup['R'] = WHITE_ROOKS;
+    _bitboardLookup['Q'] = WHITE_QUEENS;
+    _bitboardLookup['K'] = WHITE_KING;
+    _bitboardLookup['p'] = BLACK_PAWNS;
+    _bitboardLookup['n'] = BLACK_KNIGHTS;
+    _bitboardLookup['b'] = BLACK_BISHOPS;
+    _bitboardLookup['r'] = BLACK_ROOKS;
+    _bitboardLookup['q'] = BLACK_QUEENS;
+    _bitboardLookup['k'] = BLACK_KING;
 }
 
 Chess::~Chess()
@@ -36,6 +53,8 @@ Bit* Chess::PieceForPlayer(const int playerNumber, ChessPiece piece)
     bit->setOwner(getPlayerAt(playerNumber));
     bit->setSize(pieceSize, pieceSize);
 
+    bit->setGameTag(playerNumber == 0 ? piece : piece + 128);
+
     return bit;
 }
 
@@ -47,6 +66,9 @@ void Chess::setUpBoard()
 
     _grid->initializeChessSquares(pieceSize, "boardsquare.png");
     FENtoBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
+
+    _currentPlayer = WHITE;
+    _moves = generateAllMoves();
 
     startGame();
 }
@@ -121,13 +143,39 @@ bool Chess::canBitMoveFrom(Bit &bit, BitHolder &src)
     // need to implement friendly/unfriendly in bit so for now this hack
     int currentPlayer = getCurrentPlayer()->playerNumber() * 128;
     int pieceColor = bit.gameTag() & 128;
-    if (pieceColor == currentPlayer) return true;
+    if (pieceColor != currentPlayer) return false;
+
+    ChessSquare* square = (ChessSquare *)&src;
+    int squareIndex = square->getSquareIndex();
+    for (auto move : _moves) {
+        if (move.from == squareIndex) {
+            return true;
+        }
+    }
+
     return false;
 }
 
 bool Chess::canBitMoveFromTo(Bit &bit, BitHolder &src, BitHolder &dst)
 {
-    return true;
+    ChessSquare* squareSrc = (ChessSquare *)&src;
+    ChessSquare* squareDst = (ChessSquare *)&dst;
+    
+    int squareIndexSrc = squareSrc->getSquareIndex();
+    int squareIndexDst = squareDst->getSquareIndex();
+    for (auto move : _moves) {
+        if (move.from == squareIndexSrc && move.to == squareIndexDst) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void Chess::bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst)
+{
+    _currentPlayer = (_currentPlayer == WHITE) ? BLACK : WHITE;
+    _moves = generateAllMoves();
+    endTurn();
 }
 
 void Chess::stopGame()
@@ -186,4 +234,122 @@ void Chess::setStateString(const std::string &s)
             square->setBit(nullptr);
         }
     });
+}
+
+std::vector<BitMove> Chess::generateAllMoves(){
+    std::vector<BitMove> moves;
+    moves.reserve(32);
+    std::string state = stateString();
+
+    for (int i = 0; i < e_numBitboards; i++) {
+        _bitboards[i] = 0;
+    }
+
+    for (int i = 0; i < 64; i++){
+        int bitIndex = _bitboardLookup[state[i]];
+        _bitboards[bitIndex] |= 1ULL << i;
+
+        if (state[i] != '0'){
+            _bitboards[OCCUPANCY] |= 1ULL << i;
+            _bitboards[isupper(state[i]) ? WHITE_ALL_PIECES : BLACK_ALL_PIECES] |= 1ULL << i;
+        }
+    }
+
+    int bitIndex = _currentPlayer == WHITE ? WHITE_PAWNS : BLACK_PAWNS;
+    int oppBitIndex = _currentPlayer == WHITE ? BLACK_PAWNS : WHITE_PAWNS;
+
+    generateKnightMoves(moves, state);
+    generateKingMoves(moves, state);
+    
+    for (int index = 0; index < 64; index++) {
+    if (state[index] == (_currentPlayer == WHITE ? 'P' : 'p')) {
+        int row = index / 8;
+        int col = index % 8;
+        generatePawnMoves(moves, state, row, col, _currentPlayer);
+    }
+}
+
+    return moves;
+}
+
+void Chess::generateKnightMoves(std::vector<BitMove> &moves, std::string &state){
+    std::pair<int, int> knightMoves[8] = {
+        {1, 2}, {2, 1}, {2, -1}, {1, -2},
+        {-1, -2}, {-2, -1}, {-2, 1}, {-1, 2}
+    };
+
+    char knightPiece = _currentPlayer == WHITE ? 'N' : 'n';
+    int index = 0;
+
+    for (char square : state) {
+        if (square == knightPiece) {
+            int rank = index / 8;
+            int file = index % 8;
+
+            for (auto [df, dr] : knightMoves) {
+                int r = rank + dr, f = file + df;
+                if (r >= 0 && r < 8 && f >= 0 && f < 8){
+                    moves.emplace_back(index, r * 8 + f, Knight);
+                }
+            }
+        }
+
+        index++;
+    }
+}
+
+void Chess::generateKingMoves(std::vector<BitMove> &moves, std::string &state){
+    std::pair<int, int> kingMoves[8] = {
+        {0, 1}, {1, 1}, {1, 0}, {1, -1},
+        {0, -1}, {-1, -1}, {-1, 0}, {-1, 1}
+    };
+
+    char kingPiece = _currentPlayer == WHITE ? 'K' : 'k';
+    int index = 0;
+
+    for (char square : state) {
+        if (square == kingPiece) {
+            int rank = index / 8;
+            int file = index % 8;
+
+            for (auto [df, dr] : kingMoves) {
+                int r = rank + dr, f = file + df;
+                if (r >= 0 && r < 8 && f >= 0 && f < 8){
+                    moves.emplace_back(index, r * 8 + f, King);
+                }
+            }
+        }
+
+        index++;
+    }
+}
+
+void Chess::generatePawnMoves(std::vector<BitMove> &moves, std::string &state, int row, int col, int colorAsInt){
+    int direction = colorAsInt == 1 ? 1 : -1;
+    int startRow = colorAsInt == 1 ? 1 : 6;
+    
+    // Stop if pawn is already on last rank
+    int nextRow = row + direction;
+    if (nextRow < 0 || nextRow >= 8) return;
+
+    // One square forward
+    if (pieceNotation(col, row + direction) == '0'){
+        moves.emplace_back(row * 8 + col, (row + direction) * 8 + col, Pawn);
+
+        // Two squares forward from starting position
+        if (row == startRow && pieceNotation(col, row + 2 * direction) == '0'){
+            moves.emplace_back(row * 8 + col, (row + 2 * direction) * 8 + col, Pawn);
+        }
+    }
+
+    // Captures
+    for (int i = -1; i <= 1; i += 2) {
+        if (col + i >= 0 && col + i < 8) {
+            unsigned char piece = pieceNotation(col + i, row + direction);
+            int pieceColor = (piece >= 'a' && piece <= 'z') ? -1 : (piece >= 'A' && piece <= 'Z') ? 1 : 0;
+            if (pieceColor == -colorAsInt) {
+                moves.emplace_back(row * 8 + col, (row + direction) * 8 + (col + i), Pawn);
+            }
+        }
+    }
 }
