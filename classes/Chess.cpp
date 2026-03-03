@@ -1,10 +1,13 @@
 #include "Chess.h"
+#include "MagicBitboards.h"
 #include <limits>
 #include <cmath>
 
 Chess::Chess()
 {
     _grid = new Grid(8, 8);
+
+    initMagicBitboards();
 
     for (int i = 0; i < 128; i++) {
         _bitboardLookup[i] = 0;
@@ -257,10 +260,16 @@ std::vector<BitMove> Chess::generateAllMoves(){
 
     int bitIndex = _currentPlayer == WHITE ? WHITE_PAWNS : BLACK_PAWNS;
     int oppBitIndex = _currentPlayer == WHITE ? BLACK_PAWNS : WHITE_PAWNS;
+    int friendlyIndex = (_currentPlayer == WHITE) ? WHITE_ALL_PIECES : BLACK_ALL_PIECES;
+
 
     generateKnightMoves(moves, state);
     generateKingMoves(moves, state);
+    generateBishopMoves(moves, _bitboards[(_currentPlayer == WHITE) ? WHITE_BISHOPS : BLACK_BISHOPS], _bitboards[OCCUPANCY].getData(), _bitboards[friendlyIndex].getData());
+    generateRookMoves(moves, _bitboards[(_currentPlayer == WHITE) ? WHITE_ROOKS : BLACK_ROOKS], _bitboards[OCCUPANCY].getData(), _bitboards[friendlyIndex].getData());
+    generateQueenMoves(moves, _bitboards[(_currentPlayer == WHITE) ? WHITE_QUEENS : BLACK_QUEENS], _bitboards[OCCUPANCY].getData(), _bitboards[friendlyIndex].getData());
     
+
     for (int index = 0; index < 64; index++) {
     if (state[index] == (_currentPlayer == WHITE ? 'P' : 'p')) {
         int row = index / 8;
@@ -352,4 +361,31 @@ void Chess::generatePawnMoves(std::vector<BitMove> &moves, std::string &state, i
             }
         }
     }
+}
+
+void Chess::generateBishopMoves(std::vector<BitMove> &moves, Bitboard piecesBoard, uint64_t occupancy, uint64_t friendlies){
+    piecesBoard.forEachBit([&](int fromSquare) {
+        Bitboard moveBoard = Bitboard(getBishopAttacks(fromSquare, occupancy) & ~friendlies);
+        moveBoard.forEachBit([&](int toSquare) {
+            moves.emplace_back(fromSquare, toSquare, Bishop);
+        });
+    });
+}
+
+void Chess::generateRookMoves(std::vector<BitMove> &moves, Bitboard piecesBoard, uint64_t occupancy, uint64_t friendlies){
+    piecesBoard.forEachBit([&](int fromSquare) {
+        Bitboard moveBoard = Bitboard(getRookAttacks(fromSquare, occupancy) & ~friendlies);
+        moveBoard.forEachBit([&](int toSquare) {
+            moves.emplace_back(fromSquare, toSquare, Rook);
+        });
+    });
+}
+
+void Chess::generateQueenMoves(std::vector<BitMove> &moves, Bitboard piecesBoard, uint64_t occupancy, uint64_t friendlies){
+    piecesBoard.forEachBit([&](int fromSquare) {
+        Bitboard moveBoard = Bitboard(getQueenAttacks(fromSquare, occupancy) & ~friendlies);
+        moveBoard.forEachBit([&](int toSquare) {
+            moves.emplace_back(fromSquare, toSquare, Queen);
+        });
+    });
 }

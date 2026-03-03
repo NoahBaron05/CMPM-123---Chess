@@ -61,6 +61,9 @@ private:
     void generateKnightMoves(std::vector<BitMove> &moves, std::string &state);
     void generateKingMoves(std::vector<BitMove> &moves, std::string &state);
     void generatePawnMoves(std::vector<BitMove> &moves, std::string &state, int row, int col, int colorAsInt);
+    void generateBishopMoves(std::vector<BitMove> &moves, Bitboard piecesBoard, uint64_t occupancy, uint64_t friendlies);
+    void generateRookMoves(std::vector<BitMove> &moves, Bitboard piecesBoard, uint64_t occupancy, uint64_t friendlies);
+    void generateQueenMoves(std::vector<BitMove> &moves, Bitboard piecesBoard, uint64_t occupancy, uint64_t friendlies);
     void addMoveIfValid(std::string &state, std::vector<BitMove> &moves, int fromRow, int fromCol, int toRow, int toCol);
 
     Grid* _grid;
