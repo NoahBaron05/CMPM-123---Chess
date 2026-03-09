@@ -3,6 +3,7 @@
 #include "Game.h"
 #include "Grid.h"
 #include "Bitboard.h"
+#include "Evaluate.h"
 
 constexpr int pieceSize = 80;
 constexpr int WHITE = +1;
