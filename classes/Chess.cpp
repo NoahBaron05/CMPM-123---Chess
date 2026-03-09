@@ -259,15 +259,13 @@ std::vector<BitMove> Chess::generateAllMoves(){
     }
 
     int bitIndex = _currentPlayer == WHITE ? WHITE_PAWNS : BLACK_PAWNS;
-    int oppBitIndex = _currentPlayer == WHITE ? BLACK_PAWNS : WHITE_PAWNS;
     int friendlyIndex = (_currentPlayer == WHITE) ? WHITE_ALL_PIECES : BLACK_ALL_PIECES;
-
 
     generateKnightMoves(moves, state);
     generateKingMoves(moves, state);
-    generateBishopMoves(moves, _bitboards[(_currentPlayer == WHITE) ? WHITE_BISHOPS : BLACK_BISHOPS], _bitboards[OCCUPANCY].getData(), _bitboards[friendlyIndex].getData());
-    generateRookMoves(moves, _bitboards[(_currentPlayer == WHITE) ? WHITE_ROOKS : BLACK_ROOKS], _bitboards[OCCUPANCY].getData(), _bitboards[friendlyIndex].getData());
-    generateQueenMoves(moves, _bitboards[(_currentPlayer == WHITE) ? WHITE_QUEENS : BLACK_QUEENS], _bitboards[OCCUPANCY].getData(), _bitboards[friendlyIndex].getData());
+    generateBishopMoves(moves, _bitboards[WHITE_BISHOPS + bitIndex], _bitboards[OCCUPANCY].getData(), _bitboards[friendlyIndex].getData());
+    generateRookMoves(moves, _bitboards[WHITE_ROOKS + bitIndex], _bitboards[OCCUPANCY].getData(), _bitboards[friendlyIndex].getData());
+    generateQueenMoves(moves, _bitboards[WHITE_QUEENS + bitIndex], _bitboards[OCCUPANCY].getData(), _bitboards[friendlyIndex].getData());
     
 
     for (int index = 0; index < 64; index++) {
